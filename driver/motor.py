@@ -2,7 +2,7 @@ import RPi.GPIO as GPIO
 from gpiozero import OutputDevice, DigitalInputDevice
 
 ONE_METER_TICK_COUNT = 192
-ONE_CIRCLE_TICK_COUNT = 158
+ONE_CIRCLE_TICK_COUNT = 160
 
 _std_by = OutputDevice(11)
 _std_by.on()
@@ -104,7 +104,7 @@ def run(forward: bool, count: int):
             right_count += 1
 
         delta = left_count - right_count
-        left_run(forward=True, dc=_left_run_init_dc - delta / 2)
+        left_run(forward, dc=_left_run_init_dc - delta / 2)
 
         if left_count >= count:
             break
@@ -117,32 +117,12 @@ def run(forward: bool, count: int):
 def turn_left(count: int):
     # 初始化计数
     cur_count = 0
+    left_active = left_digital.is_active
     right_active = right_digital.is_active
 
-    # 右轮转动
+    # 转动
+    left_run(forward=False, dc=_left_turn_init_dc)
     right_run(forward=True, dc=_right_turn_init_dc)
-
-    # 计数
-    while True:
-        tmp_right_active = right_digital.is_active
-        if right_active != tmp_right_active:
-            right_active = tmp_right_active
-            cur_count += 1
-
-        if cur_count >= count:
-            break
-
-    # 右轮停止
-    right_stop()
-
-
-def turn_right(count: int):
-    # 初始化计数
-    cur_count = 0
-    left_active = left_digital.is_active
-
-    # 左轮转动
-    left_run(forward=True, dc=_left_turn_init_dc)
 
     # 计数
     while True:
@@ -151,8 +131,44 @@ def turn_right(count: int):
             left_active = tmp_left_active
             cur_count += 1
 
+        tmp_right_active = right_digital.is_active
+        if right_active != tmp_right_active:
+            right_active = tmp_right_active
+            cur_count += 1
+
+        if cur_count >= count:
+            break
+
+    # 停止
+    left_stop()
+    right_stop()
+
+
+def turn_right(count: int):
+    # 初始化计数
+    cur_count = 0
+    left_active = left_digital.is_active
+    right_active = right_digital.is_active
+
+    # 转动
+    left_run(forward=True, dc=_left_turn_init_dc)
+    right_run(forward=False, dc=_right_turn_init_dc)
+
+    # 计数
+    while True:
+        tmp_left_active = left_digital.is_active
+        if left_active != tmp_left_active:
+            left_active = tmp_left_active
+            cur_count += 1
+
+        tmp_right_active = right_digital.is_active
+        if right_active != tmp_right_active:
+            right_active = tmp_right_active
+            cur_count += 1
+
         if cur_count >= count:
             break
 
     # 左轮停止
     left_stop()
+    right_stop()

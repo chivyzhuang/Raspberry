@@ -138,6 +138,11 @@ collision_thread.start()
 
 
 def main_loop(callback):
+    # 清空队列
+    while not main_queue.empty():
+        main_queue.get()
+
+    # 发送开始消息
     main_queue.put(MAIN_MSG_START)
     while True:
         obj = main_queue.get()
@@ -145,4 +150,5 @@ def main_loop(callback):
             msg, args = obj
         else:
             msg, args = obj, None
-        callback(msg, args)
+        if not callback(msg, args):
+            break

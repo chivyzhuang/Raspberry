@@ -30,13 +30,13 @@ class Camera:
             return [], [], []
 
         # 识别左边二维码
-        left_qr = qr.crop((432, 0, 720, 480))
+        left_qr = qr.crop((516, 0, 720, 480))
         left_codes = zbarlight.scan_codes('qrcode', left_qr)
         if left_codes is None:
             left_codes = []
 
         # 识别右边二维码
-        right_qr = qr.crop((0, 0, 288, 480))
+        right_qr = qr.crop((0, 0, 204, 480))
         right_codes = zbarlight.scan_codes('qrcode', right_qr)
         if right_codes is None:
             right_codes = []
