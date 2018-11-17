@@ -1,43 +1,52 @@
-from picamera import PiCamera
 import os
+from typing import Tuple
+
 import zbarlight
-import PIL
+from PIL import Image
+from picamera import PiCamera
 
 
-class Camera():
-    def __init__(self, save_dir):
+class Camera:
+
+    def __init__(self, save_path):
         self.cam = PiCamera()
-        self.save_dir = save_dir
-        self.file_path = None
+        self.save_path = save_path
 
-    def capture(self, name):
-        self.file_path = os.path.join(self.save_dir, name)
-        self.cam.capture(self.file_path)
+    def get_cur_qrcode_list(self) -> Tuple[list, list, list]:
+        self.cam.capture(self.save_path)
+        if not os.path.exists(self.save_path):
+            print(self.save_path, "is not valid")
+            return [], [], []
 
-    def decode(self):
-        if self.file_path is None or not os.path.exists(self.file_path):
-            print(self.file_path, "is not valid")
-            return None
-
-        f = open(self.file_path, 'rb')
-        qr = PIL.Image.open(f)
-        qr.load()
-
+        # 第一次整图识别
+        f = open(self.save_path, 'rb')
+        qr = Image.open(f)
         codes = zbarlight.scan_codes('qrcode', qr)
         if codes is None:
-            print('No QR code found')
-        else:
-            print('QR code(s):', codes)
+            codes = []
 
-        return codes
+        # 无二维码
+        if len(codes) == 0:
+            return [], [], []
+
+        # 识别左边二维码
+        left_qr = qr.crop((432, 0, 720, 480))
+        left_codes = zbarlight.scan_codes('qrcode', left_qr)
+        if left_codes is None:
+            left_codes = []
+
+        # 识别右边二维码
+        right_qr = qr.crop((0, 0, 288, 480))
+        right_codes = zbarlight.scan_codes('qrcode', right_qr)
+        if right_codes is None:
+            right_codes = []
+
+        # 不在左右的放中间
+        center_codes = list(set(codes) - set(left_codes) - set(right_codes))
+
+        return left_codes, center_codes, right_codes
 
 
-# test code
 if __name__ == '__main__':
-    cam = Camera('/home/pi')
-    cam.capture('fuck.jpg')
-    print('decode msg:', cam.decode())
-
-
-
-
+    camera = Camera('/home/pi/qrcode.jpg')
+    print(camera.get_cur_qrcode_list())
