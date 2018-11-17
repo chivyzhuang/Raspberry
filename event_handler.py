@@ -6,13 +6,20 @@ from driver import motor
 # 开始运行
 from driver.collision import collision_devices_map
 
+# 退出
+MAIN_MSG_QUIT = -1
+# 启动
 MAIN_MSG_START = 0
 # 发生碰撞，参数为几号位碰撞传感器
 MAIN_MSG_COLLISION_HAPPEN = 1
 # 发生碰撞，参数为几号位碰撞传感器
 MAIN_MSG_COLLISION_DELETE = 2
-# 发动机任务完成，参数为剩余任务数量
+# 发动机任务完成
 MAIN_MSG_MOTOR_DONE = 3
+# 发动机任务取消
+MAIN_MSG_MOTOR_CANCEL = 4
+# 识别二维码完成
+MAIN_MSG_CODE_DONE = 5
 
 # 发动机任务，前进
 MOTOR_MSG_FORWARD = 0
@@ -38,7 +45,6 @@ class MotorThread(threading.Thread):
     def __init__(self, queue: Queue):
         super(MotorThread, self).__init__()
         self.queue = queue
-        self.lock = threading.Lock()
 
     def run(self):
         while True:
@@ -48,39 +54,46 @@ class MotorThread(threading.Thread):
             else:
                 msg, args = obj, None
 
+            main_thread_msg = MAIN_MSG_MOTOR_DONE
+            run_count = 0
             if msg == MOTOR_MSG_FORWARD:
                 count = args
                 print('motor forward, count : %d' % count)
-                motor.run(forward=True, count=count)
+                ret, run_count = motor.run(forward=True, count=count)
+                if not ret:
+                    main_thread_msg = MAIN_MSG_MOTOR_CANCEL
             elif msg == MOTOR_MSG_BACKWARD:
                 count = args
                 print('motor backward, count : %d' % count)
-                motor.run(forward=False, count=count)
+                ret, run_count = motor.run(forward=False, count=count)
+                if not ret:
+                    main_thread_msg = MAIN_MSG_MOTOR_CANCEL
             elif msg == MOTOR_MSG_LEFT:
                 count = args
                 print('motor turn left, count : %d' % count)
-                motor.turn_left(count=count)
+                ret, run_count = motor.turn_left(count=count)
+                if not ret:
+                    main_thread_msg = MAIN_MSG_MOTOR_CANCEL
             elif msg == MOTOR_MSG_RIGHT:
                 count = args
                 print('motor turn right, count : %d' % count)
-                motor.turn_right(count=count)
+                ret, run_count = motor.turn_right(count=count)
+                if not ret:
+                    main_thread_msg = MAIN_MSG_MOTOR_CANCEL
             else:
                 print('motor unknown msg, msg : %d' % msg)
-            self.lock.acquire()
-            try:
-                main_queue.put((MAIN_MSG_MOTOR_DONE, self.queue.qsize()))
-            finally:
-                self.lock.release()
+
+            main_queue.put((main_thread_msg, (msg, run_count)))
 
             # 发动机不要频繁变化，小车会有惯性，所以每次任务结束后，等待一定时间
             sleep(MOTOR_WAIT_SECONDS)
 
+    @staticmethod
+    def cancel():
+        motor.set_cancel_flag()
+
     def post(self, msg, args):
-        self.lock.acquire()
-        try:
-            self.queue.put((msg, args))
-        finally:
-            self.lock.release()
+        self.queue.put((msg, args))
 
 
 class CollisionThread(threading.Thread):

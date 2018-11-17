@@ -29,6 +29,13 @@ _right_in2 = OutputDevice(13)
 _right_running = False
 right_digital = DigitalInputDevice(21)
 
+_cancel_flag = False
+
+
+def set_cancel_flag():
+    global _cancel_flag
+    _cancel_flag = True
+
 
 def left_stop():
     _left_in1.off()
@@ -93,6 +100,11 @@ def run(forward: bool, count: int):
 
     # 进行计数 & 矫正直线
     while True:
+        global _cancel_flag
+        if _cancel_flag:
+            _cancel_flag = False
+            return False, left_count
+
         tmp_left_active = left_digital.is_active
         if left_active != tmp_left_active:
             left_active = tmp_left_active
@@ -113,6 +125,8 @@ def run(forward: bool, count: int):
     left_stop()
     right_stop()
 
+    return True, left_count
+
 
 def turn_left(count: int):
     # 初始化计数
@@ -126,6 +140,11 @@ def turn_left(count: int):
 
     # 计数
     while True:
+        global _cancel_flag
+        if _cancel_flag:
+            _cancel_flag = False
+            return False, cur_count
+
         tmp_left_active = left_digital.is_active
         if left_active != tmp_left_active:
             left_active = tmp_left_active
@@ -143,6 +162,8 @@ def turn_left(count: int):
     left_stop()
     right_stop()
 
+    return True, cur_count
+
 
 def turn_right(count: int):
     # 初始化计数
@@ -156,6 +177,11 @@ def turn_right(count: int):
 
     # 计数
     while True:
+        global _cancel_flag
+        if _cancel_flag:
+            _cancel_flag = False
+            return False, cur_count
+
         tmp_left_active = left_digital.is_active
         if left_active != tmp_left_active:
             left_active = tmp_left_active
@@ -172,3 +198,5 @@ def turn_right(count: int):
     # 左轮停止
     left_stop()
     right_stop()
+
+    return True, cur_count
