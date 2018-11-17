@@ -103,6 +103,11 @@ def run(forward: bool, count: int):
         global _cancel_flag
         if _cancel_flag:
             _cancel_flag = False
+
+            # 停止左右轮
+            left_stop()
+            right_stop()
+
             return False, left_count
 
         tmp_left_active = left_digital.is_active
@@ -143,6 +148,11 @@ def turn_left(count: int):
         global _cancel_flag
         if _cancel_flag:
             _cancel_flag = False
+
+            # 停止左右轮
+            left_stop()
+            right_stop()
+
             return False, cur_count
 
         tmp_left_active = left_digital.is_active
@@ -180,6 +190,11 @@ def turn_right(count: int):
         global _cancel_flag
         if _cancel_flag:
             _cancel_flag = False
+
+            # 停止左右轮
+            left_stop()
+            right_stop()
+
             return False, cur_count
 
         tmp_left_active = left_digital.is_active
