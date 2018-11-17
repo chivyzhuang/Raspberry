@@ -1,5 +1,27 @@
-from driver.motor import turn_left, ONE_CIRCLE_TICK_COUNT, turn_right, ONE_METER_TICK_COUNT
+from driver.motor import ONE_CIRCLE_TICK_COUNT, ONE_METER_TICK_COUNT
+from event_handler import *
 
-run(forward=True, count=ONE_METER_TICK_COUNT)
-turn_left(count=ONE_CIRCLE_TICK_COUNT)
-turn_right(count=ONE_CIRCLE_TICK_COUNT)
+
+def _handler(msg, args):
+    if msg == MAIN_MSG_START:
+        print('main start')
+        # motor_thread.post(MOTOR_MSG_FORWARD, ONE_METER_TICK_COUNT / 2)
+        # motor_thread.post(MOTOR_MSG_LEFT, ONE_CIRCLE_TICK_COUNT)
+        # motor_thread.post(MOTOR_MSG_RIGHT, ONE_CIRCLE_TICK_COUNT)
+    elif msg == MAIN_MSG_COLLISION_HAPPEN:
+        # 几号位发生碰撞
+        index = args
+        print('collision happen, index : %d' % index)
+    elif msg == MAIN_MSG_COLLISION_DELETE:
+        # 几号位发生碰撞
+        index = args
+        print('collision delete, index : %d' % index)
+    elif msg == MAIN_MSG_MOTOR_DONE:
+        remaining_count = args
+        print('motor done, remaining count : %d' % remaining_count)
+    else:
+        print('main unknown msg, msg : %d' % msg)
+
+
+if __name__ == '__main__':
+    main_loop(_handler)
