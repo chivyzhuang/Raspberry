@@ -124,15 +124,100 @@ def _first_handler(msg, args):
     return True
 
 
-# ---------------------------- 1号算法 ----------------------------
+# ---------------------------- 2号算法 ----------------------------
+
+_second_block_to_door_map = {
+    b'Block-1': b'Door1',
+    b'Block-2': b'Door2',
+}
+_second_init_catch_qr = [b'Block-1', b'Block-2']
+_second_catch_qr = list(_second_init_catch_qr)
+
+_second_found_qr = None
+_second_final_forward = False
+_second_target_door = None
+_second_door_found = False
+
+
+def _get_matched_qrcode(target, search_list):
+    for i in target:
+        if i in search_list:
+            return i
+    return None
+
 
 def __second_handler(msg, args):
+    global _second_found_qr, _second_catch_qr, _second_final_forward, _second_target_door, _second_door_found
+    print('found qr : %s, final forward : %s, target door : %s, door found : %s' %
+          (str(_second_found_qr),
+           str(_second_final_forward),
+           str(_second_target_door),
+           str(_second_door_found)))
+
     if msg == MAIN_MSG_START:
         print('main start')
+        _camera_scan()
+    elif msg == MAIN_MSG_CODE_DONE:
+        left, center, right = args
+        print(left, center, right)
+        if _second_found_qr is None:
+            # 小块还未找到
+            _second_found_qr = _get_matched_qrcode(_second_catch_qr, center)
+            if _second_found_qr is not None:
+                motor_thread.post(MOTOR_MSG_FORWARD, step_count / 2)
+            elif _get_matched_qrcode(_second_catch_qr, right) is not None:
+                motor_thread.post(MOTOR_MSG_RIGHT, qua_circle_count / 2)
+            else:
+                motor_thread.post(MOTOR_MSG_LEFT, qua_circle_count / 2)
+        else:
+            # 小块已找到
+            if _second_target_door is None:
+                # 小块未捕获
+                if _second_found_qr in left:
+                    motor_thread.post(MOTOR_MSG_LEFT, qua_circle_count / 2)
+                elif _second_found_qr in right:
+                    motor_thread.post(MOTOR_MSG_RIGHT, qua_circle_count / 2)
+                elif _second_found_qr in center:
+                    motor_thread.post(MOTOR_MSG_FORWARD, step_count / 2)
+                else:
+                    motor_thread.post(MOTOR_MSG_FORWARD, final_step_count)
+                    _second_final_forward = True
+            else:
+                # 小块已捕获
+                if not _second_door_found:
+                    # 门还未找到
+                    if _second_target_door in center:
+                        _second_door_found = True
+                        motor_thread.post(MOTOR_MSG_FORWARD, step_count / 2)
+                    elif _second_target_door in right:
+                        motor_thread.post(MOTOR_MSG_RIGHT, step_count / 2)
+                    else:
+                        motor_thread.post(MOTOR_MSG_LEFT, qua_circle_count / 2)
+                else:
+                    # 门已经找到
+                    if _second_target_door in left:
+                        motor_thread.post(MOTOR_MSG_LEFT, qua_circle_count / 2)
+                    elif _second_target_door in right:
+                        motor_thread.post(MOTOR_MSG_RIGHT, qua_circle_count / 2)
+                    elif _second_target_door in center:
+                        motor_thread.post(MOTOR_MSG_FORWARD, step_count / 2)
+                    else:
+                        motor_thread.post(MOTOR_MSG_FORWARD, ONE_METER_TICK_COUNT)
+                        _second_final_forward = True
+
     elif msg == MAIN_MSG_COLLISION_HAPPEN:
         # 几号位发生碰撞
         index = args
         print('collision happen, index : %d' % index)
+        if index == INDEX_COLLISION_FRONT:
+            # 正对着找到的小块前进
+            if _second_found_qr is not None:
+                # 已经hold住小块
+                if _second_target_door is not None:
+                    return True
+                _second_target_door = _second_block_to_door_map.get(_second_found_qr)
+                MotorThread.cancel()
+
     elif msg == MAIN_MSG_COLLISION_DELETE:
         # 几号位碰撞取消
         index = args
@@ -140,16 +225,59 @@ def __second_handler(msg, args):
     elif msg == MAIN_MSG_MOTOR_DONE:
         motor_msg, run_count = args
         print('motor done, msg : %d, run count : %d' % (motor_msg, run_count))
+        if _second_found_qr is not None:
+            if _second_target_door is None:
+                if _second_final_forward:
+                    # 丢失小块
+                    _second_found_qr = None
+                    _second_final_forward = False
+                    _second_target_door = None
+                    _second_door_found = False
+
+                    # 重新查找小块
+                    _camera_scan()
+                else:
+                    # 继续朝小块前进
+                    _camera_scan()
+            else:
+                if _second_final_forward:
+                    _second_final_forward = False
+                    if _second_found_qr in _second_catch_qr:
+                        _second_catch_qr.remove(_second_found_qr)
+                    _second_found_qr = None
+                    _second_target_door = None
+                    _second_door_found = False
+
+                    motor_thread.post(MOTOR_MSG_BACKWARD, final_step_count)
+                    if len(_second_catch_qr) == 0:
+                        main_queue.put(MAIN_MSG_QUIT)
+                else:
+                    # 继续朝门前进
+                    _camera_scan()
+
+        else:
+            _camera_scan()
+
     elif msg == MAIN_MSG_MOTOR_CANCEL:
         motor_msg, run_count = args
         print('motor cancel, msg : %d, run count : %d' % (motor_msg, run_count))
+
+        if _second_found_qr is not None and _second_target_door is not None:
+            if _second_final_forward:
+                _second_final_forward = False
+
+            # 开始找门
+            _camera_scan()
+
     elif msg == MAIN_MSG_QUIT:
         print('main quit')
         return False
     else:
         print('main unknown msg, msg : %d' % msg)
 
+    return True
+
 
 if __name__ == '__main__':
-    main_loop(_first_handler)
-    # main_loop(__second_handler)
+    # main_loop(_first_handler)
+    main_loop(__second_handler)

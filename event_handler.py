@@ -34,7 +34,7 @@ MOTOR_MSG_RIGHT = 3
 MOTOR_WAIT_SECONDS = 0.5
 
 # 碰撞传感器轮询时间
-COLLISION_POLLING_CYCLE = 0.01
+COLLISION_POLLING_CYCLE = 0.001
 
 main_queue = Queue()
 _motor_queue = Queue()
