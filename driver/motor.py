@@ -3,13 +3,17 @@ import RPi.GPIO as GPIO
 
 _std_by = OutputDevice(11)
 
-GPIO.setup(0, GPIO.OUT)
-_left_pwn = GPIO.PWM(0, 100)
+_frequency = 50
+
+_left_pwm_channel = 0
+GPIO.setup(_left_pwm_channel, GPIO.OUT)
+_left_pwn = GPIO.PWM(_left_pwm_channel, _frequency)
 _left_in1 = OutputDevice(5)
 _left_in2 = OutputDevice(6)
 
-GPIO.setup(26, GPIO.OUT)
-_right_pwn = GPIO.PWM(26, 100)
+_right_pwn_channel = 26
+GPIO.setup(_right_pwn_channel, GPIO.OUT)
+_right_pwn = GPIO.PWM(_right_pwn_channel, _frequency)
 _right_in1 = OutputDevice(19)
 _right_in2 = OutputDevice(13)
 
@@ -26,10 +30,9 @@ def left_stop():
     _left_in2.off()
 
 
-def left_run(forward: bool = True, frequency=100):
+def left_run(forward: bool = True, dc=100):
     switcher(True)
-    _left_pwn.ChangeDutyCycle(frequency)
-    _left_pwn.start(40)
+    _left_pwn.start(dc)
     if forward:
         _left_in1.off()
         _left_in2.on()
@@ -43,12 +46,9 @@ def right_stop():
     _right_in2.off()
 
 
-def right_run(forward: bool = True, frequency=100):
+def right_run(forward: bool = True, dc=100):
     switcher(True)
-    _right_pwn.ChangeDutyCycle(frequency)
-    _right_pwn.start(0)
-    # _right_pwn.frequency = frequency
-    # _right_pwn.on()
+    _right_pwn.start(dc)
     if forward:
         _right_in1.off()
         _right_in2.on()
