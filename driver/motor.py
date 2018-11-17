@@ -1,12 +1,17 @@
 import RPi.GPIO as GPIO
 from gpiozero import OutputDevice, DigitalInputDevice
 
-ONE_METER_CYCLE_NUM = 192
+ONE_METER_TICK_COUNT = 192
+ONE_CIRCLE_TICK_COUNT = 158
 
 _std_by = OutputDevice(11)
 _std_by.on()
 
-_frequency = 100
+_frequency = 200
+_left_run_init_dc = 70
+_right_run_init_dc = 72
+_left_turn_init_dc = 50
+_right_turn_init_dc = 52
 
 _left_pwm_channel = 0
 GPIO.setup(_left_pwm_channel, GPIO.OUT)
@@ -83,10 +88,8 @@ def run(forward: bool, count: int):
     right_active = right_digital.is_active
 
     # 开启左右轮
-    left_init_dc = 70
-    right_init_dc = 72
-    left_run(forward, dc=left_init_dc)
-    right_run(forward, dc=right_init_dc)
+    left_run(forward, dc=_left_run_init_dc)
+    right_run(forward, dc=_right_run_init_dc)
 
     # 进行计数 & 矫正直线
     while True:
@@ -101,11 +104,55 @@ def run(forward: bool, count: int):
             right_count += 1
 
         delta = left_count - right_count
-        left_run(forward=True, dc=left_init_dc - delta / 2)
+        left_run(forward=True, dc=_left_run_init_dc - delta / 2)
 
-        if left_count == count:
+        if left_count >= count:
             break
 
     # 停止左右轮
     left_stop()
     right_stop()
+
+
+def turn_left(count: int):
+    # 初始化计数
+    cur_count = 0
+    right_active = right_digital.is_active
+
+    # 右轮转动
+    right_run(forward=True, dc=_right_turn_init_dc)
+
+    # 计数
+    while True:
+        tmp_right_active = right_digital.is_active
+        if right_active != tmp_right_active:
+            right_active = tmp_right_active
+            cur_count += 1
+
+        if cur_count >= count:
+            break
+
+    # 右轮停止
+    right_stop()
+
+
+def turn_right(count: int):
+    # 初始化计数
+    cur_count = 0
+    left_active = left_digital.is_active
+
+    # 左轮转动
+    left_run(forward=True, dc=_left_turn_init_dc)
+
+    # 计数
+    while True:
+        tmp_left_active = left_digital.is_active
+        if left_active != tmp_left_active:
+            left_active = tmp_left_active
+            cur_count += 1
+
+        if cur_count >= count:
+            break
+
+    # 左轮停止
+    left_stop()
