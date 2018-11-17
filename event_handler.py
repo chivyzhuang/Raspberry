@@ -93,10 +93,14 @@ class CollisionThread(threading.Thread):
     def run(self):
         # 初始化碰撞情况
         tmp_count = 0
-        for index, device in collision_devices_map.items():
-            active = device.is_active
+        for index, device_union in collision_devices_map.items():
+            active = False
+            for device in device_union:
+                if device.is_active:
+                    active = True
+                    break
             self.cache_status[index] = active
-            if device.is_active:
+            if active:
                 tmp_count += 1
                 main_queue.put((MAIN_MSG_COLLISION_HAPPEN, index))
         self.collision_count = tmp_count
@@ -105,8 +109,12 @@ class CollisionThread(threading.Thread):
         while True:
             sleep(COLLISION_POLLING_CYCLE)
             tmp_count = 0
-            for index, device in collision_devices_map.items():
-                active = device.is_active
+            for index, device_union in collision_devices_map.items():
+                active = False
+                for device in device_union:
+                    if device.is_active:
+                        active = True
+                        break
                 cache_active = self.cache_status[index]
                 if active != cache_active:
                     self.cache_status[index] = active
