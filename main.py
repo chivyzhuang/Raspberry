@@ -7,9 +7,10 @@ camera = Camera('/home/pi/qrcode.jpg')
 step_count = ONE_METER_TICK_COUNT / 6
 final_step_count = ONE_METER_TICK_COUNT / 4
 qua_circle_count = ONE_CIRCLE_TICK_COUNT / 36
-
+angle_modify_count = 1
 
 # ---------------------------- 1号算法 ----------------------------
+
 
 def _is_qrcode_in(left, right):
     for i in left:
@@ -130,6 +131,12 @@ _second_block_to_door_map = {
     b'Block-1': b'Door1',
     b'Block-2': b'Door2',
 }
+_second_after_enter_door_target_map = {
+    b'Door1': [b'Door2', b'Wall-Right-1', b'Wall-Right-2'],
+    b'Door2': [b'Door1', b'Wall-Left-1', b'Wall-Left-2'],
+}
+_second_after_enter_door_target = None
+
 _second_init_catch_qr = [b'Block-1', b'Block-2']
 _second_catch_qr = list(_second_init_catch_qr)
 
@@ -147,7 +154,8 @@ def _get_matched_qrcode(target, search_list):
 
 
 def __second_handler(msg, args):
-    global _second_found_qr, _second_catch_qr, _second_final_forward, _second_target_door, _second_door_found
+    global _second_found_qr, _second_catch_qr, _second_final_forward, _second_target_door, _second_door_found, \
+        _second_after_enter_door_target, _second_after_enter_door_target_map
     print('found qr : %s, final forward : %s, target door : %s, door found : %s' %
           (str(_second_found_qr),
            str(_second_final_forward),
@@ -164,19 +172,33 @@ def __second_handler(msg, args):
             # 小块还未找到
             _second_found_qr = _get_matched_qrcode(_second_catch_qr, center)
             if _second_found_qr is not None:
+                _second_after_enter_door_target = None
                 motor_thread.post(MOTOR_MSG_FORWARD, step_count / 2)
             elif _get_matched_qrcode(_second_catch_qr, right) is not None:
-                motor_thread.post(MOTOR_MSG_RIGHT, qua_circle_count / 2)
+                _second_after_enter_door_target = None
+                motor_thread.post(MOTOR_MSG_RIGHT, angle_modify_count)
+            elif _get_matched_qrcode(_second_catch_qr, left) is not None:
+                _second_after_enter_door_target = None
+                motor_thread.post(MOTOR_MSG_LEFT, angle_modify_count)
             else:
-                motor_thread.post(MOTOR_MSG_LEFT, qua_circle_count / 2)
+                if _second_after_enter_door_target is not None:
+                    tmp_codes = center + right
+                    if _is_qrcode_in(_second_after_enter_door_target, tmp_codes):
+                        _second_after_enter_door_target = None
+                        motor.run(forward=True, count=final_step_count * 1.5)
+                        _camera_scan()
+                    else:
+                        motor_thread.post(MOTOR_MSG_LEFT, qua_circle_count / 2)
+                else:
+                    motor_thread.post(MOTOR_MSG_LEFT, qua_circle_count / 2)
         else:
             # 小块已找到
             if _second_target_door is None:
                 # 小块未捕获
                 if _second_found_qr in left:
-                    motor_thread.post(MOTOR_MSG_LEFT, qua_circle_count / 2)
+                    motor_thread.post(MOTOR_MSG_LEFT, angle_modify_count)
                 elif _second_found_qr in right:
-                    motor_thread.post(MOTOR_MSG_RIGHT, qua_circle_count / 2)
+                    motor_thread.post(MOTOR_MSG_RIGHT, angle_modify_count)
                 elif _second_found_qr in center:
                     motor_thread.post(MOTOR_MSG_FORWARD, step_count / 2)
                 else:
@@ -190,15 +212,17 @@ def __second_handler(msg, args):
                         _second_door_found = True
                         motor_thread.post(MOTOR_MSG_FORWARD, step_count / 2)
                     elif _second_target_door in right:
-                        motor_thread.post(MOTOR_MSG_RIGHT, qua_circle_count / 2)
+                        motor_thread.post(MOTOR_MSG_RIGHT, angle_modify_count)
+                    elif _second_target_door in left:
+                        motor_thread.post(MOTOR_MSG_LEFT, angle_modify_count)
                     else:
                         motor_thread.post(MOTOR_MSG_LEFT, qua_circle_count / 2)
                 else:
                     # 门已经找到
                     if _second_target_door in left:
-                        motor_thread.post(MOTOR_MSG_LEFT, qua_circle_count / 2)
+                        motor_thread.post(MOTOR_MSG_LEFT, angle_modify_count)
                     elif _second_target_door in right:
-                        motor_thread.post(MOTOR_MSG_RIGHT, qua_circle_count / 2)
+                        motor_thread.post(MOTOR_MSG_RIGHT, angle_modify_count)
                     elif _second_target_door in center:
                         motor_thread.post(MOTOR_MSG_FORWARD, step_count / 2)
                     else:
@@ -240,7 +264,9 @@ def __second_handler(msg, args):
                     # 继续朝小块前进
                     _camera_scan()
             else:
+                # 向着门前进
                 if _second_final_forward:
+                    _second_after_enter_door_target = _second_after_enter_door_target_map.get(_second_target_door)
                     _second_final_forward = False
                     if _second_found_qr in _second_catch_qr:
                         _second_catch_qr.remove(_second_found_qr)
