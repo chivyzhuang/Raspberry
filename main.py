@@ -190,7 +190,7 @@ def __second_handler(msg, args):
                         _second_door_found = True
                         motor_thread.post(MOTOR_MSG_FORWARD, step_count / 2)
                     elif _second_target_door in right:
-                        motor_thread.post(MOTOR_MSG_RIGHT, step_count / 2)
+                        motor_thread.post(MOTOR_MSG_RIGHT, qua_circle_count / 2)
                     else:
                         motor_thread.post(MOTOR_MSG_LEFT, qua_circle_count / 2)
                 else:
