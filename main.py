@@ -5,13 +5,17 @@ from event_handler import *
 def _handler(msg, args):
     if msg == MAIN_MSG_START:
         print('main start')
-        motor_thread.post(MOTOR_MSG_FORWARD, ONE_METER_TICK_COUNT / 2)
-        motor_thread.post(MOTOR_MSG_LEFT, ONE_CIRCLE_TICK_COUNT)
-        motor_thread.post(MOTOR_MSG_RIGHT, ONE_CIRCLE_TICK_COUNT)
-    elif msg == MAIN_MSG_COLLISION:
+        # motor_thread.post(MOTOR_MSG_FORWARD, ONE_METER_TICK_COUNT / 2)
+        # motor_thread.post(MOTOR_MSG_LEFT, ONE_CIRCLE_TICK_COUNT)
+        # motor_thread.post(MOTOR_MSG_RIGHT, ONE_CIRCLE_TICK_COUNT)
+    elif msg == MAIN_MSG_COLLISION_HAPPEN:
         # 几号位发生碰撞
         index = args
-        print('collision, index : %d' % index)
+        print('collision happen, index : %d' % index)
+    elif msg == MAIN_MSG_COLLISION_DELETE:
+        # 几号位发生碰撞
+        index = args
+        print('collision delete, index : %d' % index)
     elif msg == MAIN_MSG_MOTOR_DONE:
         remaining_count = args
         print('motor done, remaining count : %d' % remaining_count)

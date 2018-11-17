@@ -3,13 +3,16 @@ from queue import Queue
 from time import sleep
 
 from driver import motor
-
 # 开始运行
+from driver.collision import collision_devices_map
+
 MAIN_MSG_START = 0
 # 发生碰撞，参数为几号位碰撞传感器
-MAIN_MSG_COLLISION = 1
+MAIN_MSG_COLLISION_HAPPEN = 1
+# 发生碰撞，参数为几号位碰撞传感器
+MAIN_MSG_COLLISION_DELETE = 2
 # 发动机任务完成，参数为剩余任务数量
-MAIN_MSG_MOTOR_DONE = 2
+MAIN_MSG_MOTOR_DONE = 3
 
 # 发动机任务，前进
 MOTOR_MSG_FORWARD = 0
@@ -23,13 +26,17 @@ MOTOR_MSG_RIGHT = 3
 # 发动机任务结束后等待时间
 MOTOR_WAIT_SECONDS = 0.5
 
+# 碰撞传感器轮询时间
+COLLISION_POLLING_CYCLE = 0.01
+
 main_queue = Queue()
 _motor_queue = Queue()
 
 
-class Motor(threading.Thread):
+class MotorThread(threading.Thread):
+
     def __init__(self, queue: Queue):
-        super(Motor, self).__init__()
+        super(MotorThread, self).__init__()
         self.queue = queue
         self.lock = threading.Lock()
 
@@ -76,8 +83,50 @@ class Motor(threading.Thread):
             self.lock.release()
 
 
-motor_thread = Motor(_motor_queue)
+class CollisionThread(threading.Thread):
+
+    def __init__(self):
+        super(CollisionThread, self).__init__()
+        self.cache_status = {}
+        self.collision_count = 0
+
+    def run(self):
+        # 初始化碰撞情况
+        tmp_count = 0
+        for index, device in collision_devices_map.items():
+            active = device.is_active
+            self.cache_status[index] = active
+            if device.is_active:
+                tmp_count += 1
+                main_queue.put((MAIN_MSG_COLLISION_HAPPEN, index))
+        self.collision_count = tmp_count
+        print('collision status : %s, collision count : %d' % (str(self.cache_status), self.collision_count))
+
+        while True:
+            sleep(COLLISION_POLLING_CYCLE)
+            tmp_count = 0
+            for index, device in collision_devices_map.items():
+                active = device.is_active
+                cache_active = self.cache_status[index]
+                if active != cache_active:
+                    self.cache_status[index] = active
+                    if active:
+                        main_queue.put((MAIN_MSG_COLLISION_HAPPEN, index))
+                    else:
+                        main_queue.put((MAIN_MSG_COLLISION_DELETE, index))
+                if active:
+                    tmp_count += 1
+
+            self.collision_count = tmp_count
+
+    def has_collision(self):
+        return self.collision_count > 0
+
+
+motor_thread = MotorThread(_motor_queue)
 motor_thread.start()
+collision_thread = CollisionThread()
+collision_thread.start()
 
 
 def main_loop(callback):
