@@ -1,8 +1,3 @@
-from time import sleep
+from driver.motor import ONE_METER_CYCLE_NUM, run
 
-from driver.motor import left_run, right_run
-
-left_run(forward=True, dc=50)
-right_run(forward=True, dc=50)
-
-sleep(2)
+run(forward=True, count=ONE_METER_CYCLE_NUM)
