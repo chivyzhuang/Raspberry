@@ -44,6 +44,13 @@ class Camera:
         # 不在左右的放中间
         center_codes = list(set(codes) - set(left_codes) - set(right_codes))
 
+        # 同时在左右的也放中间
+        for i in list(left_codes):
+            if i in right_codes:
+                left_codes.remove(i)
+                right_codes.remove(i)
+                center_codes.append(i)
+
         return left_codes, center_codes, right_codes
 
 
