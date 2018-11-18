@@ -182,7 +182,7 @@ def __second_handler(msg, args):
                 motor_thread.post(MOTOR_MSG_LEFT, angle_modify_count)
             else:
                 if _second_after_enter_door_target is not None:
-                    tmp_codes = center + right
+                    tmp_codes = center + right + left
                     if _is_qrcode_in(_second_after_enter_door_target, tmp_codes):
                         _second_after_enter_door_target = None
                         motor.run(forward=True, count=final_step_count * 1.5)
