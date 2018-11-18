@@ -175,10 +175,8 @@ def __second_handler(msg, args):
                 _second_after_enter_door_target = None
                 motor_thread.post(MOTOR_MSG_FORWARD, step_count / 2)
             elif _get_matched_qrcode(_second_catch_qr, right) is not None:
-                _second_after_enter_door_target = None
-                motor_thread.post(MOTOR_MSG_RIGHT, angle_modify_count)
+                motor_thread.post(MOTOR_MSG_RIGHT, angle_modify_count + 1)
             elif _get_matched_qrcode(_second_catch_qr, left) is not None:
-                _second_after_enter_door_target = None
                 motor_thread.post(MOTOR_MSG_LEFT, angle_modify_count)
             else:
                 if _second_after_enter_door_target is not None:
